@@ -2,12 +2,14 @@ from fastapi import APIRouter, HTTPException
 from app.models.expense import ExpenseInput, ExpenseResponse, AnalyticsRequest, AnalyticsResponse
 from app.services.ai_service import GoogleAIService
 from app.services.sheets_service import GoogleSheetsService
+from app.services.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/api/v1", tags=["expenses"])
 
 # Initialize services
 ai_service = GoogleAIService()
 sheets_service = GoogleSheetsService()
+analytics_service = AnalyticsService()
 
 @router.post("/expenses", response_model=ExpenseResponse)
 async def add_expense(expense_input: ExpenseInput):
@@ -48,11 +50,16 @@ async def get_analytics(request: AnalyticsRequest):
     - "Show me my monthly spending trend"
     """
     try:
+        result = await analytics_service.answer_query(
+            request.query, 
+            request.user_id
+        )
+        
         return AnalyticsResponse(
             success=True,
-            message="Dummy",
-            data=[],
-            visualization="dummy"
+            message=result["message"],
+            data=result["data"],
+            visualization=result["visualization"]
         )
         
     except Exception as e:

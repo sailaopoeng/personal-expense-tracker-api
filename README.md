@@ -69,6 +69,37 @@ The API will be available at `http://localhost:8000`
 
 - **[Interactive API Docs](http://localhost:8000/docs)** - Swagger/OpenAPI documentation (when server is running)
 
+## API Usage
+
+### Add an Expense
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/expenses" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "eat banana lunch at $3.5 at 12:30",
+    "user_id": "john_doe"
+  }'
+```
+
+### Get Analytics
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/analytics" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How much did I spend on food this month?",
+    "user_id": "john_doe"
+  }'
+```
+
+### Get All Expenses
+
+```bash
+curl "http://localhost:8000/api/v1/expenses/john_doe?start_date=2024-01-01&category=food"
+```
+
+
 ## Example Natural Language Inputs
 
 The AI can parse various natural language formats:
@@ -130,6 +161,7 @@ personal-expense-tracker-api/
 │   ├── services/                 # Business logic
 │   │   ├── ai_service.py         # Google AI integration
 │   │   ├── sheets_service.py     # Google Sheets integration
+│   │   └── analytics_service.py  # Analytics and visualizations
 │   └── main.py                   # FastAPI application
 ├── requirements.txt              # Python dependencies
 ├── .env.example                  # Environment variables template

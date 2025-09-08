@@ -9,11 +9,12 @@ class ExpenseCategory(str, Enum):
     ENTERTAINMENT = "entertainment"
     UTILITIES = "utilities"
     SHOPPING = "shopping"
+    GROCERIES = "groceries"
     HEALTHCARE = "healthcare"
     EDUCATION = "education"
-    FAMILY = "family"
     TRAVEL = "travel"
     SUBSCRIPTION = "subscription"
+    FAMILY = "family"
     OTHER = "other"
 
 class ExpenseInput(BaseModel):

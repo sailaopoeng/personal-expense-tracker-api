@@ -9,7 +9,8 @@ from app.models.expense import ParsedExpense, ExpenseCategory
 class GoogleAIService:
     def __init__(self):
         genai.configure(api_key=settings.google_ai_api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        # self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-2.5-pro')
     
     async def parse_expense_text(self, text: str) -> ParsedExpense:
         """
@@ -25,7 +26,7 @@ class GoogleAIService:
             "timestamp": "ISO datetime string (if time mentioned, otherwise current time)",
             "amount": "numeric amount (required)",
             "currency": "currency code (default SGD if not specified)",
-            "category": "one of: food, transportation, entertainment, utilities, shopping, healthcare, education, travel, subscription, family, other",
+            "category": "one of: food, transportation, entertainment, utilities, shopping, groceries, healthcare, education, travel, subscription, family, other",
             "subcategory": "more specific category if applicable",
             "description": "clear description of the expense",
             "tags": ["relevant", "tags", "as", "array"],
