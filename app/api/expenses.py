@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.models.expense import ExpenseInput, ExpenseResponse, AnalyticsRequest, AnalyticsResponse
 from app.services.ai_service import GoogleAIService
 from app.services.sheets_service import GoogleSheetsService
 from app.services.analytics_service import AnalyticsService
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["expenses"])
 
@@ -12,7 +13,7 @@ sheets_service = GoogleSheetsService()
 analytics_service = AnalyticsService()
 
 @router.post("/expenses", response_model=ExpenseResponse)
-async def add_expense(expense_input: ExpenseInput):
+async def add_expense(expense_input: ExpenseInput, current_user: str = Depends(get_current_user)):
     """
     Parse natural language expense text and save to Google Sheets
     
@@ -40,7 +41,7 @@ async def add_expense(expense_input: ExpenseInput):
         )
 
 @router.post("/analytics", response_model=AnalyticsResponse)
-async def get_analytics(request: AnalyticsRequest):
+async def get_analytics(request: AnalyticsRequest, current_user: str = Depends(get_current_user)):
     """
     Answer questions about spending patterns
     
@@ -71,6 +72,7 @@ async def get_analytics(request: AnalyticsRequest):
 @router.get("/expenses/{user_id}")
 async def get_user_expenses(
     user_id: str,
+    current_user: str = Depends(get_current_user),
     start_date: str = None,
     end_date: str = None,
     category: str = None
@@ -107,6 +109,7 @@ async def get_user_expenses(
 @router.get("/spending/total/{user_id}")
 async def get_total_spending(
     user_id: str,
+    current_user: str = Depends(get_current_user),
     start_date: str = None,
     end_date: str = None
 ):
@@ -144,6 +147,7 @@ async def get_total_spending(
 @router.get("/spending/category/{user_id}")
 async def get_spending_by_category(
     user_id: str,
+    current_user: str = Depends(get_current_user),
     start_date: str = None,
     end_date: str = None
 ):
@@ -180,7 +184,7 @@ async def get_spending_by_category(
         )
 
 @router.get("/search/{user_id}")
-async def search_expenses(user_id: str, q: str):
+async def search_expenses(user_id: str, q: str, current_user: str = Depends(get_current_user)):
     """
     Search expenses by description, category, or tags
     """

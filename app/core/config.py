@@ -1,6 +1,4 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,6 +7,12 @@ class Settings(BaseSettings):
     app_name: str = "Personal Expense Tracker API"
     app_version: str = "1.0.0"
     debug: bool = True
+    
+    # Authentication
+    static_password: str
+    jwt_secret_key: str
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440  # 24 hours
     
     # Google AI
     google_ai_api_key: str

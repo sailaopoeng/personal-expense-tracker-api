@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.expenses import router as expenses_router
+from app.api.auth import router as auth_router
 from app.core.config import settings
 
 # Create FastAPI app
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(expenses_router)
 
 @app.get("/")
@@ -28,6 +30,11 @@ async def root():
     return {
         "message": "Personal Expense Tracker API",
         "version": settings.app_version,
+        "authentication": {
+            "login": "/auth/login",
+            "verify": "/auth/verify",
+            "note": "All expense endpoints require Bearer token authentication"
+        },
         "endpoints": {
             "add_expense": "/api/v1/expenses",
             "get_analytics": "/api/v1/analytics",
