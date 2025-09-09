@@ -29,6 +29,8 @@ Edit `.env` with your actual values:
 - `GOOGLE_AI_API_KEY`: Your Google AI API key
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: Path to your GCP service account JSON file
 - `GOOGLE_SHEET_ID`: Your Google Sheet ID
+- `STATIC_PASSWORD`: Your static Password to authenticate the api calls
+- `JWT_SECRET_KEY`: Your Secret Key for JWT signature
 
 ### 3. Setup Google Cloud Platform
 
@@ -76,6 +78,7 @@ The API will be available at `http://localhost:8000`
 ```bash
 curl -X POST "http://localhost:8000/api/v1/expenses" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "text": "eat banana lunch at $3.5 at 12:30",
     "user_id": "john_doe"
@@ -87,6 +90,7 @@ curl -X POST "http://localhost:8000/api/v1/expenses" \
 ```bash
 curl -X POST "http://localhost:8000/api/v1/analytics" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "query": "How much did I spend on food this month?",
     "user_id": "john_doe"
@@ -115,6 +119,8 @@ The AI can parse various natural language formats:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/auth/login` | Authenticate with static password and get access token |
+| POST | `/auth/verify` | Verify if a token is valid |
 | POST | `/api/v1/expenses` | Add a new expense |
 | POST | `/api/v1/analytics` | Get spending analytics |
 | GET | `/api/v1/expenses/{user_id}` | Get user expenses |
@@ -131,6 +137,7 @@ The system automatically categorizes expenses into:
 - Entertainment
 - Utilities
 - Shopping
+- Groceries
 - Healthcare
 - Education
 - Travel
@@ -153,15 +160,19 @@ You can ask questions like:
 personal-expense-tracker-api/
 ├── app/                          # Main application
 │   ├── api/                      # API endpoints
+│   │   |── auth.py               # Authentication-related endpoints
 │   │   └── expenses.py           # Expense-related endpoints
 │   ├── core/                     # Core configuration
-│   │   └── config.py             # Settings and configuration
+│   │   |── config.py             # Settings and configuration
+│   │   └── dependencies.py       # Helper to authentication
 │   ├── models/                   # Pydantic models
+│   │   |── auth.py               # Auth models
 │   │   └── expense.py            # Data models
 │   ├── services/                 # Business logic
 │   │   ├── ai_service.py         # Google AI integration
-│   │   ├── sheets_service.py     # Google Sheets integration
-│   │   └── analytics_service.py  # Analytics and visualizations
+│   │   |── analytics_service.py  # Analytics and visualizations
+│   │   ├── auth_service.py       # Authentication services
+│   │   └── sheets_service.py     # Google Sheets integration
 │   └── main.py                   # FastAPI application
 ├── requirements.txt              # Python dependencies
 ├── .env.example                  # Environment variables template
