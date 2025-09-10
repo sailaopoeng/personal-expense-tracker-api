@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     worksheet_name: str = "expenses"
     
     # Default timezone
-    default_timezone: str = "UTC"
+    default_timezone: str = "Asia/Singapore"
     
     class Config:
         env_file = ".env"

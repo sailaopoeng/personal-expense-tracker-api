@@ -107,10 +107,16 @@ class GoogleSheetsService:
     
     async def add_expense(self, expense: ParsedExpense) -> int:
         """Add a new expense to the sheet and return row number"""
+        # Format timestamp in a readable Singapore time format
+        # Remove timezone info for cleaner display in sheets since we know it's Singapore time
+        singapore_timestamp = expense.timestamp.replace(tzinfo=None)
+        singapore_date = expense.date
+        singapore_time = expense.time
+        
         row_data = [
-            expense.timestamp.isoformat(),
-            expense.date.isoformat(),
-            expense.time.isoformat(),
+            singapore_timestamp.strftime('%Y-%m-%d %H:%M:%S'),  # Readable format without timezone
+            singapore_date.strftime('%Y-%m-%d'),  # Date in YYYY-MM-DD format
+            singapore_time.strftime('%H:%M:%S'),  # Time in HH:MM:SS format
             expense.amount,
             expense.currency,
             expense.category.value,
