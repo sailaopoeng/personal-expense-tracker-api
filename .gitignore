@@ -37,6 +37,7 @@ service-account*.json
 *.swp
 *.swo
 .github
+deploy-*
 
 # Testing
 .pytest_cache/

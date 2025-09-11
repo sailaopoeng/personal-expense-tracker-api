@@ -62,21 +62,28 @@ Edit `.env` with your actual values:
 python -m app.main
 
 # Or using uvicorn directly
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 ```
 
-The API will be available at `http://localhost:8000`
+The API will be available at `http://localhost:8080`
 
 ## Documentation
 
-- **[Interactive API Docs](http://localhost:8000/docs)** - Swagger/OpenAPI documentation (when server is running)
+- **[Interactive API Docs](http://localhost:8080/docs)** - Swagger/OpenAPI documentation (when server is running)
 
 ## API Usage
+
+### Get Access Token:**
+   ```bash
+   curl -X POST "https://your-service-url/auth/login" \
+     -H "Content-Type: application/json" \
+     -d '{"password": "your-static-password"}'
+   ```
 
 ### Add an Expense
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/expenses" \
+curl -X POST "http://localhost:8080/api/v1/expenses" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
@@ -88,7 +95,7 @@ curl -X POST "http://localhost:8000/api/v1/expenses" \
 ### Get Analytics
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/analytics" \
+curl -X POST "http://localhost:8080/api/v1/analytics" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
@@ -100,7 +107,7 @@ curl -X POST "http://localhost:8000/api/v1/analytics" \
 ### Get All Expenses
 
 ```bash
-curl "http://localhost:8000/api/v1/expenses/john_doe?start_date=2024-01-01&category=food"
+curl "http://localhost:8080/api/v1/expenses/john_doe?start_date=2024-01-01&category=food"
 ```
 
 
@@ -178,6 +185,109 @@ personal-expense-tracker-api/
 ├── .env.example                  # Environment variables template
 └── README.md                     # This file
 ```
+
+### Docker Deployment
+
+#### Local Docker Testing
+
+```bash
+# Build the Docker image
+docker build -t expense-tracker-api .
+
+# Run the container
+docker run -d --name expense-tracker -p 8080:8080 expense-tracker-api
+
+# Test the API
+curl http://localhost:8080/health
+```
+
+## Testing
+
+```bash
+# Run local Docker test
+python test-scripts/test_docker_build.py
+
+# Test authentication
+curl -X POST "http://localhost:8080/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "your-password"}'
+```
+
+
+#### Google Cloud Run Deployment
+
+1. **Prerequisites:**
+   ```bash
+   # Install Google Cloud CLI
+   # Authenticate with Google Cloud
+   gcloud auth login
+   gcloud config set project YOUR-PROJECT-ID
+   
+   # Enable required APIs
+   gcloud services enable run.googleapis.com
+   gcloud services enable containerregistry.googleapis.com
+   gcloud services enable cloudbuild.googleapis.com
+   gcloud auth configure-docker
+   ```
+
+2. **Deploy using the deployment script:**
+   ```bash
+   # Edit deploy.sh with your project ID
+   nano deploy.sh
+   
+   # Make executable and run
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+3. **Or deploy manually:**
+   ```bash
+   # Build and push image
+   docker build -t gcr.io/YOUR-PROJECT-ID/expense-tracker-api .
+   docker push gcr.io/YOUR-PROJECT-ID/expense-tracker-api
+   
+   # Deploy to Cloud Run
+   gcloud run deploy expense-tracker-api \
+     --image gcr.io/YOUR-PROJECT-ID/expense-tracker-api \
+     --platform managed \
+     --region us-central1 \
+     --allow-unauthenticated \
+     --port 8080
+   ```
+
+## Environment Variables
+
+### Required Environment Variables
+
+```bash
+# Authentication
+STATIC_PASSWORD=your-secret-password
+JWT_SECRET_KEY=your-jwt-secret-key
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# Google Services
+GOOGLE_AI_API_KEY=your-google-ai-api-key
+GOOGLE_SERVICE_ACCOUNT_JSON=path/to/service-account.json
+GOOGLE_SHEET_ID=your-google-sheet-id
+GOOGLE_WORKSHEET_NAME=Personal Expense
+```
+
+### For Cloud Run Deployment
+
+Store sensitive environment variables as secrets:
+
+```bash
+# Create secrets
+echo -n "your-secret-password" | gcloud secrets create static-password --data-file=-
+echo -n "your-jwt-secret" | gcloud secrets create jwt-secret-key --data-file=-
+
+# Update Cloud Run service to use secrets
+gcloud run services update expense-tracker-api \
+  --update-secrets=STATIC_PASSWORD=static-password:latest \
+  --update-secrets=JWT_SECRET_KEY=jwt-secret-key:latest
+```
+
 
 ## 📄 License
 
