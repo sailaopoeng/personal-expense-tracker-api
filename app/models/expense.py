@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, date, time
+from datetime import datetime, date as date_type, time as time_type
 from enum import Enum
 
 class ExpenseCategory(str, Enum):
@@ -23,8 +23,8 @@ class ExpenseInput(BaseModel):
 
 class ParsedExpense(BaseModel):
     timestamp: datetime
-    date: date
-    time: time
+    date: date_type
+    time: time_type
     amount: float
     currency: str = "SGD"
     category: ExpenseCategory
@@ -45,14 +45,17 @@ class ExpenseResponse(BaseModel):
 class AnalyticsRequest(BaseModel):
     query: str
     user_id: Optional[str] = "default_user"
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
 
 class AnalyticsResponse(BaseModel):
     success: bool
     message: str
     data: Optional[dict] = None
     visualization: Optional[str] = None  # base64 encoded image
+    query: Optional[str] = None
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
 
 class SpendingSummary(BaseModel):
     total_amount: float

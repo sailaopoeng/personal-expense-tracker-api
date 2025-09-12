@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.models.expense import ExpenseInput, ExpenseResponse, AnalyticsRequest, AnalyticsResponse
+from app.models.expense import ExpenseInput, ExpenseResponse, AnalyticsRequest, AnalyticsResponse, ParsedExpense
 from app.services.ai_service import GoogleAIService
 from app.services.sheets_service import GoogleSheetsService
 from app.services.analytics_service import AnalyticsService
@@ -60,7 +60,10 @@ async def get_analytics(request: AnalyticsRequest, current_user: str = Depends(g
             success=True,
             message=result["message"],
             data=result["data"],
-            visualization=result["visualization"]
+            visualization=result["visualization"],
+            query=result["query"],
+            start_date=result["start_date"],
+            end_date=result["end_date"],
         )
         
     except Exception as e:
@@ -202,4 +205,148 @@ async def search_expenses(user_id: str, q: str, current_user: str = Depends(get_
         raise HTTPException(
             status_code=500,
             detail=f"Failed to search expenses: {str(e)}"
+        )
+
+@router.put("/expenses/row/{row_number}")
+async def update_expense_by_row(
+    row_number: int, 
+    expense_input: ParsedExpense, 
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Update an existing expense by row number using direct field input
+    """
+    try:
+        # First check if the row exists
+        existing_expense = await sheets_service.get_expense_by_row(row_number)
+        if not existing_expense:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Expense at row {row_number} not found"
+            )
+        
+        # Convert ParsedExpense to ParsedExpense format
+        from datetime import datetime
+        from app.models.expense import ParsedExpense
+        
+        # Set timestamp if not provided
+        if expense_input.timestamp is None:
+            if expense_input.date and expense_input.time:
+                expense_input.timestamp = datetime.combine(expense_input.date, expense_input.time)
+            else:
+                expense_input.timestamp = datetime.now()
+        
+        # Extract date and time from timestamp
+        current_date = expense_input.date or expense_input.timestamp.date()
+        current_time = expense_input.time or expense_input.timestamp.time()
+        
+        # Create ParsedExpense object
+        parsed_expense = ParsedExpense(
+            timestamp=expense_input.timestamp,
+            date=current_date,
+            time=current_time,
+            amount=expense_input.amount,
+            currency=expense_input.currency,
+            category=expense_input.category,
+            subcategory=expense_input.subcategory,
+            description=expense_input.description,
+            tags=expense_input.tags,
+            location=expense_input.location,
+            payment_method=expense_input.payment_method,
+            notes=expense_input.notes,
+            user_id=expense_input.user_id
+        )
+        
+        # Update the expense
+        success = await sheets_service.update_expense(row_number, parsed_expense)
+        
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update expense at row {row_number}"
+            )
+        
+        return {
+            "success": True,
+            "message": f"Expense at row {row_number} successfully updated",
+            "expense": parsed_expense,
+            "row_number": row_number
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update expense: {str(e)}"
+        )
+
+@router.delete("/expenses/row/{row_number}")
+async def delete_expense_by_row(
+    row_number: int, 
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Delete an expense by row number
+    """
+    try:
+        # First check if the row exists
+        existing_expense = await sheets_service.get_expense_by_row(row_number)
+        if not existing_expense:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Expense at row {row_number} not found"
+            )
+        
+        # Delete the expense
+        success = await sheets_service.delete_expense(row_number)
+        
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete expense at row {row_number}"
+            )
+        
+        return {
+            "success": True,
+            "message": f"Expense at row {row_number} successfully deleted",
+            "deleted_expense": existing_expense
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete expense: {str(e)}"
+        )
+
+@router.get("/expenses/row/{row_number}")
+async def get_expense_by_row(
+    row_number: int, 
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Get a specific expense by row number
+    """
+    try:
+        expense = await sheets_service.get_expense_by_row(row_number)
+        
+        if not expense:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Expense at row {row_number} not found"
+            )
+        
+        return {
+            "success": True,
+            "expense": expense
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve expense: {str(e)}"
         )

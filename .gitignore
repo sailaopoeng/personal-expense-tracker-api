@@ -43,6 +43,7 @@ deploy-*
 .pytest_cache/
 .coverage
 htmlcov/
+test-scripts/
 
 # Logs
 *.log

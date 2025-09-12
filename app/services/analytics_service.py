@@ -22,26 +22,33 @@ class AnalyticsService:
         
         # Determine what type of analysis to perform
         if any(word in query_lower for word in ['category', 'categories', 'what', 'where']):
-            return await self._category_analysis(user_id, start_date, end_date)
+            result = await self._category_analysis(user_id, start_date, end_date)
         
         elif any(word in query_lower for word in ['month', 'monthly']):
-            return await self._monthly_analysis(user_id, start_date, end_date)
+            result = await self._monthly_analysis(user_id, start_date, end_date)
         
         elif any(word in query_lower for word in ['week', 'weekly']):
-            return await self._weekly_analysis(user_id, start_date, end_date)
+            result = await self._weekly_analysis(user_id, start_date, end_date)
         
         elif any(word in query_lower for word in ['year', 'yearly', 'annual']):
-            return await self._yearly_analysis(user_id, start_date, end_date)
+            result = await self._yearly_analysis(user_id, start_date, end_date)
         
         elif any(word in query_lower for word in ['total', 'how much', 'spent']):
-            return await self._total_spending_analysis(user_id, start_date, end_date)
+            result = await self._total_spending_analysis(user_id, start_date, end_date)
         
         elif any(word in query_lower for word in ['trend', 'pattern', 'over time']):
-            return await self._trend_analysis(user_id, start_date, end_date)
+            result = await self._trend_analysis(user_id, start_date, end_date)
         
         else:
             # Default to category breakdown
-            return await self._category_analysis(user_id, start_date, end_date)
+            result = await self._category_analysis(user_id, start_date, end_date)
+        
+        # Add query, start_date, and end_date to the result
+        result["query"] = query
+        result["start_date"] = start_date.isoformat() if start_date else None
+        result["end_date"] = end_date.isoformat() if end_date else None
+        
+        return result
     
     def _parse_time_range(self, query: str) -> tuple[Optional[date], Optional[date]]:
         """Parse time range from query"""

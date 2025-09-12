@@ -151,6 +151,9 @@ class GoogleSheetsService:
         if df.empty:
             return []
         
+        # Add row numbers (starting from row 2 since row 1 is headers)
+        df['row_number'] = range(2, len(df) + 2)
+        
         # Filter by user_id
         df = df[df['User ID'] == user_id]
         
@@ -274,6 +277,77 @@ class GoogleSheetsService:
         mask = df['searchable'].str.contains(query.lower(), na=False)
         filtered_df = df[mask]
         
-        # Remove the searchable column and return
+        # Remove the searchable column and return (keeping row_number)
         filtered_df = filtered_df.drop('searchable', axis=1)
         return filtered_df.to_dict('records')
+
+    async def update_expense(self, row_number: int, expense: ParsedExpense) -> bool:
+        """Update an existing expense by row number"""
+        try:
+            # Check if row exists
+            all_values = self.worksheet.get_all_values()
+            if row_number < 1 or row_number > len(all_values):
+                return False
+            
+            # Prepare row data (same format as add_expense)
+            row_data = [
+                expense.timestamp.isoformat(),
+                expense.date.isoformat(),
+                expense.time.isoformat(),
+                expense.amount,
+                expense.currency,
+                expense.category.value,
+                expense.subcategory or '',
+                expense.description,
+                ', '.join(expense.tags),
+                expense.location or '',
+                expense.payment_method or '',
+                expense.notes or '',
+                expense.user_id
+            ]
+            
+            # Update the specific row (row_number is 1-based)
+            self.worksheet.update(f'A{row_number}:M{row_number}', [row_data])
+            return True
+            
+        except Exception as e:
+            print(f"Error updating expense at row {row_number}: {e}")
+            return False
+
+    async def delete_expense(self, row_number: int) -> bool:
+        """Delete an expense by row number"""
+        try:
+            # Check if row exists and is not the header
+            all_values = self.worksheet.get_all_values()
+            if row_number <= 1 or row_number > len(all_values):
+                return False
+            
+            # Delete the specific row (row_number is 1-based)
+            self.worksheet.delete_rows(row_number)
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting expense at row {row_number}: {e}")
+            return False
+
+    async def get_expense_by_row(self, row_number: int) -> Optional[Dict[str, Any]]:
+        """Get a specific expense by row number"""
+        try:
+            # Check if row exists and is not the header
+            all_values = self.worksheet.get_all_values()
+            if row_number <= 1 or row_number > len(all_values):
+                return None
+            
+            # Get headers and the specific row
+            headers = all_values[0]
+            row_data = all_values[row_number - 1]  # Convert to 0-based index
+            
+            # Create dictionary from headers and row data
+            expense_dict = dict(zip(headers, row_data))
+            expense_dict['row_number'] = row_number
+            
+            return expense_dict
+            
+        except Exception as e:
+            print(f"Error getting expense at row {row_number}: {e}")
+            return None
