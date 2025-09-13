@@ -45,8 +45,8 @@ class ExpenseResponse(BaseModel):
 class AnalyticsRequest(BaseModel):
     query: str
     user_id: Optional[str] = "default_user"
-    start_date: Optional[date_type] = None
-    end_date: Optional[date_type] = None
+    # start_date: Optional[date_type] = None
+    # end_date: Optional[date_type] = None
 
 class AnalyticsResponse(BaseModel):
     success: bool
