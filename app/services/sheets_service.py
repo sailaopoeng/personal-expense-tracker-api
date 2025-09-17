@@ -74,10 +74,10 @@ class GoogleSheetsService:
             elif len(all_values) == 0:
                 print("No rows found, setting up headers...")
                 setup_needed = True
-            elif not all_values[0] or all_values[0] != expected_headers:
-                print("Headers missing or incorrect, setting up headers...")
-                print(f"Current first row: {all_values[0] if all_values else 'None'}")
-                setup_needed = True
+            # elif not all_values[0] or all_values[0] != expected_headers:
+            #     print("Headers missing or incorrect, setting up headers...")
+            #     print(f"Current first row: {all_values[0] if all_values else 'None'}")
+            #     setup_needed = True
             else:
                 print("Headers already exist and are correct")
                 
