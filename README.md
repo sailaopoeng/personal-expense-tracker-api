@@ -126,14 +126,22 @@ The AI can parse various natural language formats:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| **Authentication** |
 | POST | `/auth/login` | Authenticate with static password and get access token |
 | POST | `/auth/verify` | Verify if a token is valid |
-| POST | `/api/v1/expenses` | Add a new expense |
-| POST | `/api/v1/analytics` | Get spending analytics |
-| GET | `/api/v1/expenses/{user_id}` | Get user expenses |
+| **Expense Management** |
+| POST | `/api/v1/expenses` | Add a new expense (AI parsing) |
+| PUT | `/api/v1/expenses/row/{row_number}` | Update expense by row number (direct fields) |
+| DELETE | `/api/v1/expenses/row/{row_number}` | Delete expense by row number |
+| GET | `/api/v1/expenses/row/{row_number}` | Get specific expense by row number |
+| GET | `/api/v1/expenses/{user_id}` | Get user expenses (includes row numbers) |
+| **Analytics & Insights** |
+| POST | `/api/v1/analytics` | Get AI-powered spending analytics and comparisons |
 | GET | `/api/v1/spending/total/{user_id}` | Get total spending |
 | GET | `/api/v1/spending/category/{user_id}` | Get spending by category |
-| GET | `/api/v1/search/{user_id}?q=query` | Search expenses |
+| **Search & Discovery** |
+| GET | `/api/v1/search/{user_id}?q=query` | Search expenses (includes row numbers) |
+| **Documentation** |
 | GET | `/docs` | Interactive API documentation |
 
 ## Expense Categories
@@ -154,12 +162,29 @@ The system automatically categorizes expenses into:
 
 ## Analytics Queries
 
-You can ask questions like:
+The analytics service supports AI-powered natural language queries with sophisticated comparison and trend analysis capabilities:
+
+### Simple Queries
 - "How much did I spend this month?"
 - "What's my spending by category?"
 - "Show me my weekly spending trend"
 - "How much did I spend on food last month?"
 - "What's my average daily spending?"
+
+### Comparison Queries
+- "Compare this month vs last month"
+- "Compare food and transportation spending"
+- "Show me July vs August expenses by category"
+- "Compare my spending pattern between weekdays and weekends"
+
+### Advanced Analytics
+- "Show daily expenses for the past week"
+- "Compare food expenses for the last two months"
+- "What categories increased the most between Q1 and Q2?"
+
+**📊 For complete analytics API response documentation, see:** [Analytics API Responses](docs/analytics-api-responses.md)
+
+**📖 For detailed API usage examples, see:** [API Examples](docs/api-examples.md)
 
 ## 📁 Project Structure
 
