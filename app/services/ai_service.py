@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Optional
 import google.generativeai as genai
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 import json
 import re
 import pytz
@@ -80,6 +80,75 @@ class GoogleAIService:
         except Exception as e:
             # Fallback parsing if AI fails
             return self._fallback_parse(text)
+    
+    async def parse_analytics_query(self, query: str) -> Dict[str, Any]:
+        """
+        Parse natural language analytics query to extract specific requirements
+        """
+        current_sg_time = self._get_current_singapore_time()
+        current_date = current_sg_time.date()
+        
+        prompt = f"""
+        Parse the following analytics query to understand what the user wants to analyze about their expenses.
+        
+        Query: "{query}"
+        Current date: {current_date}
+        
+        Extract and return the following information in JSON format:
+        {{
+            "analysis_type": "one of: comparison, trend, category_breakdown, total, period_analysis",
+            "comparison_type": "if comparison: time_periods, categories, categories_over_time, null",
+            "time_periods": [
+                {{
+                    "label": "descriptive name for the period",
+                    "start_date": "YYYY-MM-DD or null",
+                    "end_date": "YYYY-MM-DD or null"
+                }}
+            ],
+            "categories": ["list of specific categories if mentioned, or null for all"],
+            "granularity": "day, week, month, year",
+            "specific_insights": ["list of specific things user wants to know"],
+            "chart_type": "pie, bar, line, comparison_bar, side_by_side",
+            "include_category_breakdown": true/false
+        }}
+        
+        Examples:
+        - "compare this month vs last month" → comparison of two time periods
+        - "compare food and transportation spending last 3 months" → category comparison over time
+        - "show me July vs August expenses by category" → category comparison between specific months
+        - "how much did I spend on food in the last two weeks" → category analysis for specific period
+        - "compare my spending pattern between weekdays and weekends" → pattern comparison
+        - "show daily expenses for the past week" → trend analysis
+        
+        Important rules:
+        1. For "this month" use current month from start to today
+        2. For "last month" use the complete previous month
+        3. For "last X days/weeks/months" count backwards from today
+        4. When comparing periods, create separate entries in time_periods array
+        5. If categories are mentioned specifically, include them in categories array
+        6. Choose appropriate chart_type based on the analysis needed
+        
+        Return only valid JSON, no explanations.
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            result_text = response.text.strip()
+            
+            # Clean up the response text
+            if result_text.startswith("```json"):
+                result_text = result_text[7:]
+            if result_text.endswith("```"):
+                result_text = result_text[:-3]
+            result_text = result_text.strip()
+            
+            parsed_result = json.loads(result_text)
+            return parsed_result
+            
+        except Exception as e:
+            print(f"Error parsing analytics query: {e}")
+            # Fallback to simple parsing
+            return self._fallback_query_parsing(query)
     
     def _extract_json_from_response(self, response_text: str) -> str:
         """Extract JSON from AI response text"""
@@ -168,3 +237,38 @@ class GoogleAIService:
             tags=[],
             user_id="default_user"
         )
+    
+    def _fallback_query_parsing(self, query: str) -> Dict[str, Any]:
+        """
+        Fallback method for parsing analytics queries when AI fails
+        """
+        query_lower = query.lower()
+        
+        # Default response structure
+        result = {
+            "analysis_type": "category_breakdown",
+            "comparison_type": None,
+            "time_periods": [{"label": "all time", "start_date": None, "end_date": None}],
+            "categories": None,
+            "granularity": "month",
+            "specific_insights": [],
+            "chart_type": "pie",
+            "include_category_breakdown": True
+        }
+        
+        # Detect comparison patterns
+        if any(word in query_lower for word in ['vs', 'versus', 'compare', 'comparison']):
+            result["analysis_type"] = "comparison"
+            result["comparison_type"] = "time_periods"
+            result["chart_type"] = "comparison_bar"
+        
+        # Detect time periods
+        if 'this month' in query_lower and 'last month' in query_lower:
+            today = date.today()
+            result["time_periods"] = [
+                {"label": "This Month", "start_date": today.replace(day=1).isoformat(), "end_date": today.isoformat()},
+                {"label": "Last Month", "start_date": (today.replace(day=1) - timedelta(days=1)).replace(day=1).isoformat(), 
+                 "end_date": (today.replace(day=1) - timedelta(days=1)).isoformat()}
+            ]
+        
+        return result
