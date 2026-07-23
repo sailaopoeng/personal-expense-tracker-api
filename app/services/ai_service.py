@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from datetime import datetime, date, time, timedelta
 import json
 import re
@@ -9,10 +10,20 @@ from app.models.expense import ParsedExpense, ExpenseCategory
 
 class GoogleAIService:
     def __init__(self):
-        genai.configure(api_key=settings.google_ai_api_key)
-        # self.model = genai.GenerativeModel('gemini-pro')
-        self.model = genai.GenerativeModel('gemini-2.5-pro')
+        self.client = genai.Client(api_key=settings.google_ai_api_key)
+        self.model_name = settings.gemini_model
         self.singapore_tz = pytz.timezone('Asia/Singapore')
+
+    async def _generate_json(self, prompt: str) -> Dict[str, Any]:
+        """Generate a JSON response using the configured Gemini model."""
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            ),
+        )
+        return json.loads(response.text)
     
     def _convert_to_singapore_time(self, dt: datetime) -> datetime:
         """Convert datetime to Singapore timezone"""
@@ -69,9 +80,7 @@ class GoogleAIService:
         """
         
         try:
-            response = self.model.generate_content(prompt)
-            json_text = self._extract_json_from_response(response.text)
-            parsed_data = json.loads(json_text)
+            parsed_data = await self._generate_json(prompt)
             
             # Convert to ParsedExpense model
             expense = self._convert_to_expense_model(parsed_data)
@@ -132,33 +141,12 @@ class GoogleAIService:
         """
         
         try:
-            response = self.model.generate_content(prompt)
-            result_text = response.text.strip()
-            
-            # Clean up the response text
-            if result_text.startswith("```json"):
-                result_text = result_text[7:]
-            if result_text.endswith("```"):
-                result_text = result_text[:-3]
-            result_text = result_text.strip()
-            
-            parsed_result = json.loads(result_text)
-            return parsed_result
+            return await self._generate_json(prompt)
             
         except Exception as e:
             print(f"Error parsing analytics query: {e}")
             # Fallback to simple parsing
             return self._fallback_query_parsing(query)
-    
-    def _extract_json_from_response(self, response_text: str) -> str:
-        """Extract JSON from AI response text"""
-        # Try to find JSON in the response
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-        if json_match:
-            return json_match.group()
-        
-        # If no JSON found, assume the entire response is JSON
-        return response_text.strip()
     
     def _convert_to_expense_model(self, data: Dict[str, Any]) -> ParsedExpense:
         """Convert parsed data to ParsedExpense model"""

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     
     # Google AI
     google_ai_api_key: str
+    gemini_model: str
     
     # Google Sheets
     google_service_account_json: str

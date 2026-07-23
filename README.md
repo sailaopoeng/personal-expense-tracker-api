@@ -27,6 +27,7 @@ cp .env.example .env
 
 Edit `.env` with your actual values:
 - `GOOGLE_AI_API_KEY`: Your Google AI API key
+- `GEMINI_MODEL`: Gemini model used for expense and analytics parsing (currently `gemini-3.5-flash-lite`)
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: Path to your GCP service account JSON file
 - `GOOGLE_SHEET_ID`: Your Google Sheet ID
 - `STATIC_PASSWORD`: Your static Password to authenticate the api calls
@@ -241,44 +242,52 @@ curl -X POST "http://localhost:8080/auth/login" \
 
 #### Google Cloud Run Deployment
 
-1. **Prerequisites:**
+The deployment script builds directly from this repository using Cloud Build and
+Artifact Registry. Local Docker is not required.
+
+1. **Authenticate and select the project:**
+
    ```bash
-   # Install Google Cloud CLI
-   # Authenticate with Google Cloud
    gcloud auth login
-   gcloud config set project YOUR-PROJECT-ID
-   
-   # Enable required APIs
-   gcloud services enable run.googleapis.com
-   gcloud services enable containerregistry.googleapis.com
-   gcloud services enable cloudbuild.googleapis.com
-   gcloud auth configure-docker
+   gcloud config set project personal-expense-bot
    ```
 
-2. **Deploy using the deployment script:**
+2. **Enable the required APIs (first deployment only):**
+
    ```bash
-   # Edit deploy.sh with your project ID
-   nano deploy.sh
-   
-   # Make executable and run
+   gcloud services enable \
+     run.googleapis.com \
+     cloudbuild.googleapis.com \
+     artifactregistry.googleapis.com \
+     secretmanager.googleapis.com
+   ```
+
+3. **Deploy a new revision:**
+
+   ```bash
    chmod +x deploy.sh
    ./deploy.sh
    ```
 
-3. **Or deploy manually:**
+   Existing environment variables and Secret Manager references are preserved.
+   The script updates `GEMINI_MODEL` to `gemini-3.5-flash-lite`.
+
+4. **Verify the deployed revision:**
+
    ```bash
-   # Build and push image
-   docker build -t gcr.io/YOUR-PROJECT-ID/expense-tracker-api .
-   docker push gcr.io/YOUR-PROJECT-ID/expense-tracker-api
-   
-   # Deploy to Cloud Run
-   gcloud run deploy expense-tracker-api \
-     --image gcr.io/YOUR-PROJECT-ID/expense-tracker-api \
-     --platform managed \
+   SERVICE_URL="$(gcloud run services describe personal-expense-api \
      --region us-central1 \
-     --allow-unauthenticated \
-     --port 8080
+     --format='value(status.url)')"
+   curl "$SERVICE_URL/health"
    ```
+
+To change the model later without rebuilding the container:
+
+```bash
+gcloud run services update personal-expense-api \
+  --region us-central1 \
+  --update-env-vars GEMINI_MODEL=NEW_MODEL_ID
+```
 
 ## Environment Variables
 
@@ -293,26 +302,41 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # Google Services
 GOOGLE_AI_API_KEY=your-google-ai-api-key
+GEMINI_MODEL=gemini-3.5-flash-lite
 GOOGLE_SERVICE_ACCOUNT_JSON=path/to/service-account.json
 GOOGLE_SHEET_ID=your-google-sheet-id
-GOOGLE_WORKSHEET_NAME=Personal Expense
+WORKSHEET_NAME=Personal Expense
 ```
 
 ### For Cloud Run Deployment
 
-Store sensitive environment variables as secrets:
+An existing service keeps its environment variables and Secret Manager
+references when `deploy.sh` creates a new revision. For a new service, or if
+the configuration was removed, create the secrets first:
 
 ```bash
-# Create secrets
 echo -n "your-secret-password" | gcloud secrets create static-password --data-file=-
 echo -n "your-jwt-secret" | gcloud secrets create jwt-secret-key --data-file=-
-
-# Update Cloud Run service to use secrets
-gcloud run services update expense-tracker-api \
-  --update-secrets=STATIC_PASSWORD=static-password:latest \
-  --update-secrets=JWT_SECRET_KEY=jwt-secret-key:latest
+echo -n "your-google-ai-api-key" | gcloud secrets create google-ai-api-key --data-file=-
+gcloud secrets create google-service-account-json --data-file=service-account.json
 ```
 
+Then attach the secrets and non-sensitive configuration:
+
+```bash
+gcloud run services update personal-expense-api \
+  --region us-central1 \
+  --update-secrets=STATIC_PASSWORD=static-password:latest \
+  --update-secrets=JWT_SECRET_KEY=jwt-secret-key:latest \
+  --update-secrets=GOOGLE_AI_API_KEY=google-ai-api-key:latest \
+  --update-secrets=/secrets/google-service-account.json=google-service-account-json:latest \
+  --update-env-vars="GOOGLE_SERVICE_ACCOUNT_JSON=/secrets/google-service-account.json,GOOGLE_SHEET_ID=your-google-sheet-id,WORKSHEET_NAME=expenses,GEMINI_MODEL=gemini-3.5-flash-lite"
+```
+### Future model changes
+
+You no longer need to edit code or rebuild merely to change the model:
+
+gcloud run services update personal-expense-api --region us-central1 --update-env-vars GEMINI_MODEL=NEW_MODEL_ID
 
 ## 📄 License
 
